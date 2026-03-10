@@ -250,7 +250,7 @@ export default function ExtendLock() {
   return (
     <>
       <Head>
-        <title>veGNET Lock Extender</title>
+        <title>lockextend</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/LOGO_PNG.png" />
       </Head>
@@ -305,7 +305,7 @@ export default function ExtendLock() {
         <div className="card-wrap">
           <div style={styles.titleRow}>
             <img src="/LOGO_PNG.png" alt="veGNET logo" style={styles.logo} />
-            <h1 style={styles.title}>veGNET Lock Extender</h1>
+            <h1 style={styles.title}>lockextend</h1>
           </div>
 
           {/* MetaMask check */}
