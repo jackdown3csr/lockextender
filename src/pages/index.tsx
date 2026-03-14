@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { BrowserProvider, JsonRpcProvider, Contract, formatEther } from "ethers";
 import Head from "next/head";
+import { useRouter } from "next/router";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -24,9 +25,110 @@ const VEGNET_ABI = [
 // Helpers
 // ---------------------------------------------------------------------------
 
-function tsToDate(ts: bigint): string {
+type Locale = "en" | "fr";
+
+const translations = {
+  en: {
+    metaMaskMissing: "MetaMask is not installed. Please install MetaMask to use this page.",
+    connectWallet: "Connect Wallet",
+    wallet: "Wallet",
+    network: "Network",
+    networkOk: "Galactica Mainnet",
+    wrongNetwork: (chainId: number | null) =>
+      `Wrong network (chain ${chainId ?? "unknown"}) - switch to Galactica Mainnet (613419)`,
+    readErrorPrefix: "Read error:",
+    lockedGnet: "Locked GNET",
+    veBalance: "veGNET Balance",
+    currentLockEnd: "Current Lock End",
+    daysRemaining: "Days Remaining",
+    maxPossibleEnd: "Max Possible End",
+    maxExtendableBy: "Max Extendable By",
+    selectedTargetEnd: "Selected Target End",
+    selectedExtension: "Selected Extension",
+    targetExtension: (days: number) => `Target extension: ${formatDays("en", days)}`,
+    current: "Current",
+    max: "Max",
+    roundingInfo:
+      "The selected day count still rounds to the current lock week. Move the slider further to reach the next valid week boundary.",
+    noActiveLock: "No active lock found for this wallet.",
+    alreadyMax:
+      "Lock is already at the current week-max. You must wait before another extension becomes possible.",
+    extending: "Extending...",
+    extendLock: "Extend Lock",
+    txPending: "Transaction pending...",
+    txConfirmed: "Transaction confirmed",
+    userRejected: "Transaction rejected by user.",
+    txFailed: "Transaction failed.",
+    readFailed: "Failed to read contract state",
+    noteOne:
+      "This sends a transaction from the connected wallet and only extends the unlock date of the existing veGNET lock. It does not add more GNET.",
+    noteTwo:
+      "Lock extension uses week rounding, so sometimes you must wait before another extension becomes possible.",
+    language: "Language",
+    english: "English",
+    french: "Francais",
+    gnetUnit: "GNET",
+    vegnetUnit: "veGNET",
+  },
+  fr: {
+    metaMaskMissing: "MetaMask n'est pas installe. Veuillez installer MetaMask pour utiliser cette page.",
+    connectWallet: "Connecter le portefeuille",
+    wallet: "Portefeuille",
+    network: "Reseau",
+    networkOk: "Galactica Mainnet",
+    wrongNetwork: (chainId: number | null) =>
+      `Mauvais reseau (chain ${chainId ?? "inconnue"}) - passez sur Galactica Mainnet (613419)`,
+    readErrorPrefix: "Erreur de lecture :",
+    lockedGnet: "GNET verrouilles",
+    veBalance: "Solde veGNET",
+    currentLockEnd: "Fin actuelle du verrouillage",
+    daysRemaining: "Jours restants",
+    maxPossibleEnd: "Fin maximale possible",
+    maxExtendableBy: "Extension maximale",
+    selectedTargetEnd: "Nouvelle fin selectionnee",
+    selectedExtension: "Extension selectionnee",
+    targetExtension: (days: number) => `Extension cible : ${formatDays("fr", days)}`,
+    current: "Actuel",
+    max: "Max",
+    roundingInfo:
+      "Le nombre de jours choisi s'arrondit encore a la semaine actuelle du verrouillage. Deplacez davantage le curseur pour atteindre la prochaine limite hebdomadaire valide.",
+    noActiveLock: "Aucun verrouillage actif trouve pour ce portefeuille.",
+    alreadyMax:
+      "Le verrouillage est deja au maximum de la semaine en cours. Vous devez attendre avant qu'une nouvelle extension soit possible.",
+    extending: "Extension en cours...",
+    extendLock: "Etendre le verrouillage",
+    txPending: "Transaction en attente...",
+    txConfirmed: "Transaction confirmee",
+    userRejected: "Transaction refusee par l'utilisateur.",
+    txFailed: "Echec de la transaction.",
+    readFailed: "Impossible de lire l'etat du contrat",
+    noteOne:
+      "Cette action envoie une transaction depuis le portefeuille connecte et ne fait qu'etendre la date de deblocage du verrouillage veGNET existant. Elle n'ajoute pas de GNET.",
+    noteTwo:
+      "L'extension du verrouillage utilise un arrondi a la semaine, il faut donc parfois attendre avant qu'une nouvelle extension soit possible.",
+    language: "Langue",
+    english: "English",
+    french: "Francais",
+    gnetUnit: "GNET",
+    vegnetUnit: "veGNET",
+  },
+} satisfies Record<Locale, Record<string, string | ((value: any) => string)>>;
+
+function formatDays(locale: Locale, days: number): string {
+  if (locale === "fr") {
+    return `${days} jour${days > 1 ? "s" : ""}`;
+  }
+
+  return `${days} day${days === 1 ? "" : "s"}`;
+}
+
+function tsToDate(ts: bigint, locale: Locale): string {
   if (ts === 0n) return "—";
-  return new Date(Number(ts) * 1000).toUTCString().replace(" GMT", " UTC");
+  return new Intl.DateTimeFormat(locale === "fr" ? "fr-FR" : "en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "UTC",
+  }).format(new Date(Number(ts) * 1000)) + " UTC";
 }
 
 function daysBetween(a: bigint, b: bigint): number {
@@ -96,6 +198,9 @@ type TxStatus =
 // ---------------------------------------------------------------------------
 
 export default function ExtendLock() {
+  const router = useRouter();
+  const locale: Locale = router.locale === "fr" ? "fr" : "en";
+  const t = translations[locale];
   const [account, setAccount] = useState<string | null>(null);
   const [chainId, setChainId] = useState<number | null>(null);
   const [lock, setLock] = useState<LockState | null>(null);
@@ -152,6 +257,11 @@ export default function ExtendLock() {
     }
   };
 
+  const switchLocale = async (nextLocale: Locale) => {
+    if (nextLocale === locale) return;
+    await router.push(router.pathname, router.asPath, { locale: nextLocale });
+  };
+
   // -----------------------------------------------------------------------
   // Read lock state
   // -----------------------------------------------------------------------
@@ -176,10 +286,10 @@ export default function ExtendLock() {
         canExtend: maxNewTs > lockEndVal && lockedAmount > 0n,
       });
     } catch (err: any) {
-      setReadError(err?.message ?? "Failed to read contract state");
+      setReadError(err?.message ?? t.readFailed);
       setLock(null);
     }
-  }, []);
+  }, [t.readFailed]);
 
   useEffect(() => {
     if (account && isCorrectNetwork) {
@@ -217,9 +327,9 @@ export default function ExtendLock() {
       await fetchLockState(account);
     } catch (err: any) {
       if (err?.code === "ACTION_REJECTED" || err?.code === 4001) {
-        setTxStatus({ kind: "error", message: "Transaction rejected by user." });
+        setTxStatus({ kind: "error", message: t.userRejected });
       } else {
-        setTxStatus({ kind: "error", message: err?.message ?? "Transaction failed." });
+        setTxStatus({ kind: "error", message: err?.message ?? t.txFailed });
       }
     }
   };
@@ -308,30 +418,50 @@ export default function ExtendLock() {
             <h1 style={styles.title}>lockextend</h1>
           </div>
 
+          <div style={styles.localeRow}>
+            <span style={styles.localeLabel}>{t.language}</span>
+            <div style={styles.localeButtons}>
+              <button
+                type="button"
+                style={locale === "en" ? styles.localeBtnActive : styles.localeBtn}
+                onClick={() => void switchLocale("en")}
+              >
+                {t.english}
+              </button>
+              <button
+                type="button"
+                style={locale === "fr" ? styles.localeBtnActive : styles.localeBtn}
+                onClick={() => void switchLocale("fr")}
+              >
+                {t.french}
+              </button>
+            </div>
+          </div>
+
           {/* MetaMask check */}
           {!hasMetaMask && (
-            <p style={styles.warning}>MetaMask is not installed. Please install MetaMask to use this page.</p>
+            <p style={styles.warning}>{t.metaMaskMissing}</p>
           )}
 
           {/* Connect */}
           {hasMetaMask && !account && (
             <button style={styles.btn} onClick={connect}>
-              Connect Wallet
+              {t.connectWallet}
             </button>
           )}
 
           {/* Account & network */}
           {account && (
             <div style={styles.section}>
-              <Row label="Wallet" value={account} />
+              <Row label={t.wallet} value={account} />
               <Row
-                label="Network"
+                label={t.network}
                 value={
                   isCorrectNetwork ? (
-                    <span style={{ color: "#27ae60" }}>Galactica Mainnet ✓</span>
+                    <span style={{ color: "#27ae60" }}>{t.networkOk} ✓</span>
                   ) : (
                     <span style={{ color: "#e74c3c" }}>
-                      Wrong network (chain {chainId}) — switch to Galactica Mainnet (613419)
+                      {t.wrongNetwork(chainId)}
                     </span>
                   )
                 }
@@ -340,25 +470,25 @@ export default function ExtendLock() {
           )}
 
           {/* Read error */}
-          {readError && <p style={styles.error}>Read error: {readError}</p>}
+          {readError && <p style={styles.error}>{t.readErrorPrefix} {readError}</p>}
 
           {/* Lock data */}
           {lock && isCorrectNetwork && (
             <div style={styles.section}>
-              <Row label="Locked GNET" value={formatEther(lock.lockedAmount) + " GNET"} />
-              <Row label="veGNET Balance" value={formatEther(lock.veBalance) + " veGNET"} />
-              <Row label="Current Lock End" value={tsToDate(lock.lockEnd)} />
-              <Row label="Days Remaining" value={String(daysFromNow(lock.lockEnd))} />
-              <Row label="Max Possible End" value={tsToDate(lock.maxNewTs)} />
-              <Row label="Max Extendable By" value={maxSelectableDays + " days"} />
+              <Row label={t.lockedGnet} value={formatEther(lock.lockedAmount) + " " + t.gnetUnit} />
+              <Row label={t.veBalance} value={formatEther(lock.veBalance) + " " + t.vegnetUnit} />
+              <Row label={t.currentLockEnd} value={tsToDate(lock.lockEnd, locale)} />
+              <Row label={t.daysRemaining} value={String(daysFromNow(lock.lockEnd))} />
+              <Row label={t.maxPossibleEnd} value={tsToDate(lock.maxNewTs, locale)} />
+              <Row label={t.maxExtendableBy} value={formatDays(locale, maxSelectableDays)} />
               <Row
-                label="Selected Target End"
-                value={tsToDate(selectedNewTs)}
+                label={t.selectedTargetEnd}
+                value={tsToDate(selectedNewTs, locale)}
               />
               <Row
-                label="Selected Extension"
+                label={t.selectedExtension}
                 value={
-                  canSubmitSelected ? effectiveExtensionDays + " days" : "0 days"
+                  formatDays(locale, canSubmitSelected ? effectiveExtensionDays : 0)
                 }
               />
             </div>
@@ -367,7 +497,7 @@ export default function ExtendLock() {
           {lock && isCorrectNetwork && lock.canExtend && (
             <div style={styles.sliderWrap}>
               <label htmlFor="extend-days" style={styles.sliderLabel}>
-                Target extension: {safeSelectedDays} day{safeSelectedDays === 1 ? "" : "s"}
+                {t.targetExtension(safeSelectedDays)}
               </label>
               <input
                 id="extend-days"
@@ -380,12 +510,12 @@ export default function ExtendLock() {
                 style={styles.slider}
               />
               <div style={styles.sliderScale}>
-                <span>Current</span>
-                <span>Max</span>
+                <span>{t.current}</span>
+                <span>{t.max}</span>
               </div>
               {!canSubmitSelected && safeSelectedDays > 0 && (
                 <p style={styles.info}>
-                  The selected day count still rounds to the current lock week. Move the slider further to reach the next valid week boundary.
+                  {t.roundingInfo}
                 </p>
               )}
             </div>
@@ -393,32 +523,32 @@ export default function ExtendLock() {
 
           {/* Status messages */}
           {account && isCorrectNetwork && !hasActiveLock && lock !== null && (
-            <p style={styles.warning}>No active lock found for this wallet.</p>
+            <p style={styles.warning}>{t.noActiveLock}</p>
           )}
 
           {account && isCorrectNetwork && hasActiveLock && !lock!.canExtend && (
             <p style={styles.info}>
-              Lock is already at the current week-max. You must wait before another extension becomes possible.
+              {t.alreadyMax}
             </p>
           )}
 
           {/* Extend button */}
           {account && isCorrectNetwork && (
             <button style={submitDisabled ? styles.btnDisabled : styles.btn} disabled={submitDisabled} onClick={extendLock}>
-              {txStatus.kind === "pending" ? "Extending…" : "Extend Lock"}
+              {txStatus.kind === "pending" ? t.extending : t.extendLock}
             </button>
           )}
 
           {/* Tx status */}
           {txStatus.kind === "pending" && (
             <p style={styles.info}>
-              Transaction pending…<br />
+              {t.txPending}<br />
               <span style={styles.mono}>{txStatus.hash}</span>
             </p>
           )}
           {txStatus.kind === "success" && (
             <p style={{ ...styles.info, color: "#27ae60" }}>
-              Transaction confirmed ✓<br />
+              {t.txConfirmed} ✓<br />
               <span style={styles.mono}>{txStatus.hash}</span>
             </p>
           )}
@@ -428,10 +558,10 @@ export default function ExtendLock() {
 
           {/* Notices */}
           <p style={styles.note}>
-            This sends a transaction from the connected wallet and only extends the unlock date of the existing veGNET lock. It does not add more GNET.
+            {t.noteOne}
           </p>
           <p style={styles.note}>
-            Lock extension uses week rounding, so sometimes you must wait before another extension becomes possible.
+            {t.noteTwo}
           </p>
         </div>
       </div>
@@ -474,6 +604,41 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 22,
     fontWeight: 600,
     margin: 0,
+  },
+  localeRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 20,
+  },
+  localeLabel: {
+    color: "#8b949e",
+    fontSize: 13,
+  },
+  localeButtons: {
+    display: "flex",
+    gap: 8,
+  },
+  localeBtn: {
+    padding: "6px 10px",
+    borderRadius: 999,
+    border: "1px solid #30363d",
+    background: "transparent",
+    color: "#c9d1d9",
+    cursor: "pointer",
+    fontSize: 12,
+    fontWeight: 600,
+  },
+  localeBtnActive: {
+    padding: "6px 10px",
+    borderRadius: 999,
+    border: "1px solid #238636",
+    background: "#15351f",
+    color: "#e6edf3",
+    cursor: "pointer",
+    fontSize: 12,
+    fontWeight: 600,
   },
   section: {
     marginBottom: 20,
