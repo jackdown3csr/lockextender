@@ -52,7 +52,7 @@ const translations = {
       "The selected day count still rounds to the current lock week. Move the slider further to reach the next valid week boundary.",
     noActiveLock: "No active lock found for this wallet.",
     alreadyMax:
-      "Lock is already at the current week-max. You must wait before another extension becomes possible.",
+      "Lock is already at the current maximum. The next extension window opens every Tuesday at 00:00 UTC, when the 730-day cap advances by one week.",
     extending: "Extending...",
     extendLock: "Extend Lock",
     txPending: "Transaction pending...",
@@ -63,7 +63,7 @@ const translations = {
     noteOne:
       "This sends a transaction from the connected wallet and only extends the unlock date of the existing veGNET lock. It does not add more GNET.",
     noteTwo:
-      "Lock extension uses week rounding, so sometimes you must wait before another extension becomes possible.",
+      "Lock extension uses week rounding, so the new unlock date is always rounded down to the nearest week boundary.",
     language: "Language",
     english: "English",
     french: "Francais",
@@ -94,7 +94,7 @@ const translations = {
       "Le nombre de jours choisi s'arrondit encore a la semaine actuelle du verrouillage. Deplacez davantage le curseur pour atteindre la prochaine limite hebdomadaire valide.",
     noActiveLock: "Aucun verrouillage actif trouve pour ce portefeuille.",
     alreadyMax:
-      "Le verrouillage est deja au maximum de la semaine en cours. Vous devez attendre avant qu'une nouvelle extension soit possible.",
+      "Le verrouillage est deja au maximum actuel. La prochaine fenetre d'extension s'ouvre chaque mardi a 00:00 UTC, lorsque le plafond de 730 jours avance d'une semaine.",
     extending: "Extension en cours...",
     extendLock: "Etendre le verrouillage",
     txPending: "Transaction en attente...",
@@ -105,7 +105,7 @@ const translations = {
     noteOne:
       "Cette action envoie une transaction depuis le portefeuille connecte et ne fait qu'etendre la date de deblocage du verrouillage veGNET existant. Elle n'ajoute pas de GNET.",
     noteTwo:
-      "L'extension du verrouillage utilise un arrondi a la semaine, il faut donc parfois attendre avant qu'une nouvelle extension soit possible.",
+      "L'extension utilise un arrondi a la semaine : la nouvelle date de deblocage est toujours arrondie a la limite de semaine inferieure.",
     language: "Langue",
     english: "English",
     french: "Francais",
